@@ -10,6 +10,5 @@ func MustBytes(b []byte, _ error) []byte {
 	if b == nil {
 		b = []byte{}
 	}
-
 	return b
 }

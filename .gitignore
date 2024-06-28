@@ -2,3 +2,5 @@
 vendor/
 reports/
 .DS_Store
+*.html
+*.json

@@ -14,7 +14,7 @@ const DefaultTimeout = time.Duration(30 * time.Second)
 type Options struct {
 	Header    http.Header
 	Timeout   time.Duration
-	Host      string
+	Cookies   []http.Cookie
 	Transport *http.Transport
 }
 
@@ -29,6 +29,12 @@ func WithHeader(Header http.Header) FuncOptions {
 func WithTimeout(timeout time.Duration) FuncOptions {
 	return func(op *Options) {
 		op.Timeout = timeout
+	}
+}
+
+func WithCookies(cookies ...http.Cookie) FuncOptions {
+	return func(op *Options) {
+		op.Cookies = append(op.Cookies, cookies...)
 	}
 }
 
@@ -95,6 +101,11 @@ func (f *Fetch) Do(req *http.Request) (*Response, error) {
 	if f.Option.Header != nil {
 		req.Header = f.Option.Header
 	}
+	// Añadir cookies a la solicitud
+	for _, c := range f.Option.Cookies {
+		req.AddCookie(&c)
+	}
+
 	return f.makeResponse(f.Client.Do(req))
 }
 

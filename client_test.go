@@ -28,9 +28,6 @@ func TestDefaultOptions(t *testing.T) {
 	if opt.Timeout != DefaultTimeout {
 		t.Errorf("Expected timeout [%v], but got [%v]", DefaultTimeout, opt.Timeout)
 	}
-	if opt.Host != "" {
-		t.Errorf("Expected timeout [%v], but got [%v]", DefaultTimeout, opt.Timeout)
-	}
 	if opt.Header == nil {
 		t.Error("Expected header already initialized, but got nil")
 	}

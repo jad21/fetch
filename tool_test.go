@@ -1,10 +1,10 @@
 package fetch
 
 import (
-	"testing"
+	"bytes"
 	"fmt"
 	"strings"
-	"bytes"
+	"testing"
 )
 
 func TestMustString(t *testing.T) {
