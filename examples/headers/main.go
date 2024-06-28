@@ -1,27 +1,28 @@
 package main
 
 import (
-	"net/http"
-	"context"
 	"fmt"
 	"log"
-	
-	"github.com/rodkranz/fetch"
+	"net/http"
+
+	"github.com/jad21/fetch"
 )
 
 func main() {
-	opt := fetch.Options{
-		Header: http.Header{
-			"Content-Type": []string{"application/json"},
-			"User-Agent":   []string{"OLX-Group"},
-		},
+	headers := http.Header{
+		"Content-Type": []string{"application/json"},
+		"User-Agent":   []string{"My-User-Agent"},
 	}
 
-	f := fetch.New(&opt)
-	rsp, err := f.GetWithContext(context.Background(), "http://www.google.com", nil)
+	f := fetch.New(fetch.WithHeader(headers))
+	rsp, err := f.Get("https://httpbin.org/headers", nil)
 	if err != nil {
 		log.Fatalf("could not fetch data from target because: %s", err)
 	}
-
-	fmt.Println(rsp.StatusCode)
+	fmt.Println(rsp.String())
+	/*
+		...
+			"User-Agent": "My-User-Agent",
+		...
+	*/
 }

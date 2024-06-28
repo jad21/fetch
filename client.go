@@ -1,13 +1,10 @@
 package fetch
 
 import (
-	"context"
 	"io"
 	"net"
 	"net/http"
 	"time"
-
-	"golang.org/x/net/context/ctxhttp"
 )
 
 // DefaultTimeout defined timeout default for any request
@@ -21,41 +18,40 @@ type Options struct {
 	Transport *http.Transport
 }
 
+type FuncOptions func(op *Options)
+
+func WithHeader(Header http.Header) FuncOptions {
+	return func(op *Options) {
+		op.Header = Header
+	}
+}
+
+func WithTimeout(timeout time.Duration) FuncOptions {
+	return func(op *Options) {
+		op.Timeout = timeout
+	}
+}
+
 // DefaultOptions returns options with timeout defined
 func DefaultOptions() *Options {
-	return &Options{
+	opt := &Options{
 		Timeout: DefaultTimeout,
 		Header:  http.Header{},
 	}
-}
-
-// NewDefault get fetcher with netTransport and timeout defined
-func NewDefault() *Fetch {
-	return New(DefaultOptions())
-}
-
-// getTransport make transport from options definitions
-func getTransport(opt *Options) {
-	if opt.Timeout.Nanoseconds() == 0 {
-		opt.Timeout = DefaultTimeout
-	}
-
 	opt.Transport = &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout: opt.Timeout,
 		}).DialContext,
 		TLSHandshakeTimeout: opt.Timeout,
 	}
+	return opt
 }
 
 // New get new fetcher and you need to specify the netTransport.
-func New(opt *Options) *Fetch {
-	if opt == nil {
-		opt = DefaultOptions()
-	}
-
-	if opt.Transport == nil {
-		getTransport(opt)
+func New(fn ...FuncOptions) *Fetch {
+	opt := DefaultOptions()
+	for _, cb := range fn {
+		cb(opt)
 	}
 
 	return &Fetch{
@@ -91,7 +87,6 @@ func (f Fetch) makeResponse(resp *http.Response, err error) (*Response, error) {
 			Status:     http.StatusText(http.StatusGatewayTimeout),
 		}
 	}
-
 	return &Response{Response: resp}, err
 }
 
@@ -100,7 +95,6 @@ func (f *Fetch) Do(req *http.Request) (*Response, error) {
 	if f.Option.Header != nil {
 		req.Header = f.Option.Header
 	}
-
 	return f.makeResponse(f.Client.Do(req))
 }
 
@@ -110,7 +104,6 @@ func (f *Fetch) Get(url string, reader io.Reader) (*Response, error) {
 	if err != nil {
 		return newErrorResponse(http.StatusNoContent, "couldn't request GET: %s", err)
 	}
-
 	return f.Do(req)
 }
 
@@ -120,7 +113,6 @@ func (f *Fetch) Post(url string, reader io.Reader) (*Response, error) {
 	if err != nil {
 		return newErrorResponse(http.StatusNoContent, "couldn't request POST: %s", err)
 	}
-
 	return f.Do(req)
 }
 
@@ -130,7 +122,6 @@ func (f *Fetch) Put(url string, reader io.Reader) (*Response, error) {
 	if err != nil {
 		return newErrorResponse(http.StatusNoContent, "couldn't request PUT: %s", err)
 	}
-
 	return f.Do(req)
 }
 
@@ -161,68 +152,22 @@ func (f *Fetch) Options(url string, reader io.Reader) (*Response, error) {
 	return f.Do(req)
 }
 
-// DoWithContext execute any kind of request passing context
-func (f *Fetch) DoWithContext(ctx context.Context, req *http.Request) (*Response, error) {
-	if f.Option.Header != nil {
-		req.Header = f.Option.Header
-	}
+// Global Instance
+var self = New()
 
-	return f.makeResponse(ctxhttp.Do(ctx, f.Client, req))
+func Get(url string, reader io.Reader) (*Response, error) {
+	return self.Get(url, reader)
+}
+func Post(url string, reader io.Reader) (*Response, error) {
+	return self.Post(url, reader)
+}
+func Put(url string, reader io.Reader) (*Response, error) {
+	return self.Put(url, reader)
+}
+func Delete(url string, reader io.Reader) (*Response, error) {
+	return self.Delete(url, reader)
 }
 
-// GetWithContext execute DoWithContext but define request to method GET
-func (f *Fetch) GetWithContext(ctx context.Context, url string, reader io.Reader) (*Response, error) {
-	req, err := http.NewRequest(http.MethodGet, url, reader)
-	if err != nil {
-		return newErrorResponse(http.StatusNoContent, "couldn't request GET: %s", err)
-	}
-
-	return f.DoWithContext(ctx, req)
-}
-
-// PostWithContext execute DoWithContext but define request to method POST
-func (f *Fetch) PostWithContext(ctx context.Context, url string, reader io.Reader) (*Response, error) {
-	req, err := http.NewRequest(http.MethodPost, url, reader)
-	if err != nil {
-		return newErrorResponse(http.StatusNoContent, "couldn't request POST: %s", err)
-	}
-
-	return f.DoWithContext(ctx, req)
-}
-
-// PutWithContext execute DoWithContext but define request to method PUT
-func (f *Fetch) PutWithContext(ctx context.Context, url string, reader io.Reader) (*Response, error) {
-	req, err := http.NewRequest(http.MethodPut, url, reader)
-	if err != nil {
-		return newErrorResponse(http.StatusNoContent, "couldn't request PUT: %s", err)
-	}
-	return f.DoWithContext(ctx, req)
-}
-
-// DeleteWithContext execute DoWithContext but define request to method DELETE
-func (f *Fetch) DeleteWithContext(ctx context.Context, url string, reader io.Reader) (*Response, error) {
-	req, err := http.NewRequest(http.MethodDelete, url, reader)
-	if err != nil {
-		return newErrorResponse(http.StatusNoContent, "couldn't request DELETE: %s", err)
-	}
-
-	return f.DoWithContext(ctx, req)
-}
-
-// PatchWithContext execute DoWithContext but define request to method PATCH
-func (f *Fetch) PatchWithContext(ctx context.Context, url string, reader io.Reader) (*Response, error) {
-	req, err := http.NewRequest(http.MethodPatch, url, reader)
-	if err != nil {
-		return newErrorResponse(http.StatusNoContent, "couldn't request PATCH: %s", err)
-	}
-	return f.DoWithContext(ctx, req)
-}
-
-// OptionsWithContext execute DoWithContext but define request to method OPTIONS
-func (f *Fetch) OptionsWithContext(ctx context.Context, url string, reader io.Reader) (*Response, error) {
-	req, err := http.NewRequest(http.MethodOptions, url, reader)
-	if err != nil {
-		return newErrorResponse(http.StatusNoContent, "couldn't request OPTIONS: %s", err)
-	}
-	return f.DoWithContext(ctx, req)
+func IsJSON() *Fetch {
+	return New().IsJSON()
 }

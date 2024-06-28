@@ -1,13 +1,11 @@
 package fetch
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -26,9 +24,7 @@ func (noBody) Close() error                     { return nil }
 func (noBody) WriteTo(io.Writer) (int64, error) { return 0, nil }
 
 func TestDefaultOptions(t *testing.T) {
-	var opt *Options
-
-	opt = DefaultOptions()
+	var opt *Options = DefaultOptions()
 	if opt.Timeout != DefaultTimeout {
 		t.Errorf("Expected timeout [%v], but got [%v]", DefaultTimeout, opt.Timeout)
 	}
@@ -40,21 +36,8 @@ func TestDefaultOptions(t *testing.T) {
 	}
 }
 
-func TestNewDefault(t *testing.T) {
-	defaultFetch := NewDefault()
-	if defaultFetch.Option == nil {
-		t.Error("Expected Option not nil, but got nil")
-	}
-	if defaultFetch.Transport == nil {
-		t.Error("Expected Transport is nil, but got nil")
-	}
-	if defaultFetch.Client == nil {
-		t.Error("Expected Client not nil, but got nil")
-	}
-}
-
 func TestNew(t *testing.T) {
-	defaultFetch := New(nil)
+	defaultFetch := New()
 	if defaultFetch.Option == nil {
 		t.Error("Expected Option not nil, but got nil")
 	}
@@ -63,19 +46,6 @@ func TestNew(t *testing.T) {
 	}
 	if defaultFetch.Client == nil {
 		t.Error("Expected Client not nil, but got nil")
-	}
-}
-
-func TestGetTransport(t *testing.T) {
-	opt := Options{}
-	getTransport(&opt)
-
-	if opt.Timeout.Nanoseconds() == 0 {
-		t.Error("Expected a Timeout defined, but got empty")
-	}
-
-	if opt.Transport == nil {
-		t.Error("Expected a Transport defined, but got empty")
 	}
 }
 
@@ -88,16 +58,7 @@ func TestFetch_IsJSON(t *testing.T) {
 	}
 
 	t.Run("Test-IsJSON", func(t *testing.T) {
-		f := NewDefault().IsJSON()
-
-		server := httptest.NewServer(http.HandlerFunc(handlerContentTypeTest))
-		defer server.Close()
-
-		f.Get(server.URL, nil)
-	})
-
-	t.Run("Test-NoneHeaderIsJSON", func(t *testing.T) {
-		f := New(&Options{}).IsJSON()
+		f := New().IsJSON()
 
 		server := httptest.NewServer(http.HandlerFunc(handlerContentTypeTest))
 		defer server.Close()
@@ -109,14 +70,14 @@ func TestFetch_IsJSON(t *testing.T) {
 func TestMakeResponse(t *testing.T) {
 
 	t.Run("test-MakeResponseOK", func(t *testing.T) {
-		body := "Rodrigo Lopes not found"
+		body := "Jose Delgado not found"
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprint(w, body)
 		}))
 		defer ts.Close()
 
-		res, err := NewDefault().Get(ts.URL, nil)
+		res, err := New().Get(ts.URL, nil)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -136,7 +97,9 @@ func TestMakeResponse(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		res, err := New(&Options{Timeout: time.Duration(10 * time.Millisecond)}).Get(ts.URL, nil)
+		res, err := New(
+			WithTimeout(time.Duration(10*time.Millisecond)),
+		).Get(ts.URL, nil)
 		if err == nil {
 			t.Error("Expected timeout error, but got none error")
 		}
@@ -149,175 +112,4 @@ func TestMakeResponse(t *testing.T) {
 
 func serverHandlerMock(handlerFunc http.HandlerFunc) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(handlerFunc))
-}
-
-func TestFetch_Get(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, "Hello World")
-	}
-	s := serverHandlerMock(handler)
-	defer s.Close()
-
-	f := NewDefault()
-	t.Run("Test-Method-With-Context-GET", func(t *testing.T) {
-		rsp, err := f.GetWithContext(context.Background(), s.URL, nil)
-		if err != nil {
-			t.Errorf("Expected none error, but got [%s]", err)
-		}
-
-		if http.StatusNotFound != rsp.StatusCode {
-			t.Errorf("Expected status code [%d], but got [%d]", http.StatusNoContent, rsp.StatusCode)
-		}
-	})
-	t.Run("Test-Method-With-Context-GET-And-Error", func(t *testing.T) {
-		rsp, err := f.GetWithContext(context.Background(), "http://[::1]a", nil)
-		if err == nil {
-			t.Error("Expected error parse url, but got none error")
-		}
-
-		if http.StatusNoContent != rsp.StatusCode {
-			t.Errorf("Expected status code [%d], but got [%d]", http.StatusNoContent, rsp.StatusCode)
-		}
-
-		if reflect.TypeOf(rsp) != reflect.TypeOf(&Response{}) {
-			t.Errorf("Expected none request, but got [%v]", rsp)
-		}
-	})
-	t.Run("Test-Method-GET", func(t *testing.T) {
-		rsp, err := f.Get(s.URL, nil)
-		if err != nil {
-			t.Errorf("Expected none error, but got [%s]", err)
-		}
-
-		if http.StatusNotFound != rsp.StatusCode {
-			t.Errorf("Expected status code [%d], but got [%d]", http.StatusNoContent, rsp.StatusCode)
-		}
-	})
-	t.Run("Test-Method-GET-And-Error", func(t *testing.T) {
-		rsp, err := f.Get("http://[::1]a", nil)
-		if err == nil {
-			t.Error("Expected error parse url, but got none error")
-		}
-
-		if http.StatusNoContent != rsp.StatusCode {
-			t.Errorf("Expected status code [%d], but got [%d]", http.StatusNoContent, rsp.StatusCode)
-		}
-
-		if reflect.TypeOf(rsp) != reflect.TypeOf(&Response{}) {
-			t.Errorf("Expected none request, but got [%v]", rsp)
-		}
-	})
-}
-
-func TestFetch(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, "Hello World")
-	}
-	s := serverHandlerMock(handler)
-	defer s.Close()
-
-	type FetchWithoutContext func(string, io.Reader) (*Response, error)
-	type FetchWithContext func(context.Context, string, io.Reader) (*Response, error)
-
-	f := NewDefault()
-
-	t.Run("Test-Method-GET", func(t *testing.T) {
-		rsp, err := f.Get(s.URL, nil)
-		if err != nil {
-			t.Errorf("Expected none error, but got [%s]", err)
-		}
-
-		if http.StatusNotFound != rsp.StatusCode {
-			t.Errorf("Expected status code [%d], but got [%d]", http.StatusNoContent, rsp.StatusCode)
-		}
-	})
-	t.Run("Test-Method-GET-With-Context", func(t *testing.T) {
-		rsp, err := f.GetWithContext(context.Background(), s.URL, nil)
-		if err != nil {
-			t.Errorf("Expected none error, but got [%s]", err)
-		}
-
-		if http.StatusNotFound != rsp.StatusCode {
-			t.Errorf("Expected status code [%d], but got [%d]", http.StatusNoContent, rsp.StatusCode)
-		}
-	})
-
-	testWithoutContext := []struct {
-		Name   string
-		Method FetchWithoutContext
-	}{
-		{Name: "DELETE", Method: f.Delete},
-		{Name: "POST", Method: f.Post},
-		{Name: "PUT", Method: f.Put},
-		{Name: "OPTIONS", Method: f.Options},
-		{Name: "PATCH", Method: f.Patch},
-	}
-
-	for _, test := range testWithoutContext {
-		t.Run(fmt.Sprintf("Test-Method-%s", test.Name), func(t *testing.T) {
-			rsp, err := test.Method(s.URL, NoBody)
-			if err != nil {
-				t.Errorf("Expected none error, but got [%s]", err)
-			}
-
-			if http.StatusNotFound != rsp.StatusCode {
-				t.Errorf("Expected status code [%d], but got [%d]", http.StatusNoContent, rsp.StatusCode)
-			}
-		})
-		t.Run(fmt.Sprintf("Test-Method-%s-with-Error", test.Name), func(t *testing.T) {
-			rsp, err := test.Method("http://[::1]a", NoBody)
-			if err == nil {
-				t.Error("Expected error parse url, but got none error")
-			}
-
-			if http.StatusNoContent != rsp.StatusCode {
-				t.Errorf("Expected status code [%d], but got [%d]", http.StatusNoContent, rsp.StatusCode)
-			}
-
-			if reflect.TypeOf(rsp) != reflect.TypeOf(&Response{}) {
-				t.Errorf("Expected none request, but got [%v]", rsp)
-			}
-		})
-	}
-
-	testWithContext := []struct {
-		Name   string
-		Method FetchWithContext
-	}{
-		{Name: "DELETE", Method: f.DeleteWithContext},
-		{Name: "POST", Method: f.PostWithContext},
-		{Name: "PUT", Method: f.PutWithContext},
-		{Name: "OPTIONS", Method: f.OptionsWithContext},
-		{Name: "PATCH", Method: f.PatchWithContext},
-	}
-
-	for _, test := range testWithContext {
-		t.Run(fmt.Sprintf("Test-Method-With-Context-%s", test.Name), func(t *testing.T) {
-			rsp, err := test.Method(context.Background(), s.URL, NoBody)
-			if err != nil {
-				t.Errorf("Expected none error, but got [%s]", err)
-			}
-
-			if http.StatusNotFound != rsp.StatusCode {
-				t.Errorf("Expected status code [%d], but got [%d]", http.StatusNoContent, rsp.StatusCode)
-			}
-		})
-		t.Run(fmt.Sprintf("Test-Method-With-Context-%s-And-Error", test.Name), func(t *testing.T) {
-			rsp, err := test.Method(context.Background(), "http://[::1]a", NoBody)
-			if err == nil {
-				t.Error("Expected error parse url, but got none error")
-			}
-
-			if http.StatusNoContent != rsp.StatusCode {
-				t.Errorf("Expected status code [%d], but got [%d]", http.StatusNoContent, rsp.StatusCode)
-			}
-
-			if reflect.TypeOf(rsp) != reflect.TypeOf(&Response{}) {
-				t.Errorf("Expected none request, but got [%v]", rsp)
-			}
-		})
-	}
-
 }

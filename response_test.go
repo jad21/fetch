@@ -14,7 +14,7 @@ func TestResponse_BodyIsEmpty(t *testing.T) {
 	t.Run("Test-NoBodyValue", func(t *testing.T) {
 		res := Response{body: nil}
 		if !res.BodyIsEmpty() {
-			t.Fatalf("Expecetd no body, but got [%s]", res.body)
+			t.Fatalf("Expected no body, but got [%s]", res.body)
 		}
 	})
 
@@ -22,7 +22,7 @@ func TestResponse_BodyIsEmpty(t *testing.T) {
 		body := []byte("Lorem Ipsum")
 		res := Response{body: body}
 		if res.BodyIsEmpty() {
-			t.Fatalf("Expecetd body [%s], but got [%s]", body, res.body)
+			t.Fatalf("Expected body [%s], but got [%s]", body, res.body)
 		}
 	})
 }

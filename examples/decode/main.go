@@ -1,10 +1,10 @@
 package main
 
 import (
-	"log"
 	"fmt"
+	"log"
 
-	"github.com/rodkranz/fetch"
+	"github.com/jad21/fetch"
 )
 
 const url = "https://api.github.com/users/%s"
@@ -16,10 +16,9 @@ type GitHubUser struct {
 }
 
 func main() {
-	USERNAME := "rodkranz"
+	USERNAME := "jad21"
 
-	f := fetch.NewDefault()
-	rsp, err := f.Get(fmt.Sprintf(url, USERNAME), nil)
+	rsp, err := fetch.Get(fmt.Sprintf(url, USERNAME), nil)
 	if err != nil {
 		log.Fatalf("could not fetch [%s] because: %s", url, err)
 	}
@@ -30,4 +29,10 @@ func main() {
 	}
 
 	fmt.Printf("Name: %s\nCompany: %s\nLocation: %s\n", user.Name, user.Company, user.Location)
+	/*
+		Output:
+		Name: Jose Angel
+		Company:
+		Location: Merida - Venezuela
+	*/
 }

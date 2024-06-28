@@ -3,7 +3,7 @@ package fetch
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -33,7 +33,7 @@ func (r *Response) Bytes() (_ []byte, err error) {
 		return nil, ErrEmptyBody
 	}
 
-	r.body, err = ioutil.ReadAll(r.Body)
+	r.body, err = io.ReadAll(io.Reader(r.Body))
 	return r.body, err
 }
 

@@ -2,27 +2,33 @@ package main
 
 import (
 	"log"
-	
-	"github.com/rodkranz/fetch"
+
+	"github.com/jad21/fetch"
 )
 
-const targetURL = "http://website.com/"
-
-type LoginForm struct {
-	Username string
-	Password string
+type Payload struct {
+	Name  string
+	Email string
 }
 
 func main() {
-	login := LoginForm{
-		Username: "username",
-		Password: "password",
+	payload := Payload{
+		Name:  "Jose Delgado",
+		Email: "esojangel@gmail.com",
 	}
 
-	rsp , err := fetch.NewDefault().IsJSON().Post(targetURL, fetch.NewReader(login))
+	rsp, err := fetch.IsJSON().Post("https://httpbin.org/post", fetch.NewReader(payload))
 	if err != nil {
 		log.Fatalf("could not login because: %s", err)
 	}
 
 	log.Println(rsp.String())
+	/*
+		...
+		"json": {
+			"Email": "esojangel@gmail.com",
+			"Name": "Jose Delgado"
+		},
+		...
+	*/
 }
