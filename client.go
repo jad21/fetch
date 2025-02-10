@@ -15,7 +15,7 @@ type Options struct {
 	Header    http.Header
 	Timeout   time.Duration
 	Cookies   []http.Cookie
-	Transport *http.Transport
+	Transport http.RoundTripper
 }
 
 type FuncOptions func(op *Options)
